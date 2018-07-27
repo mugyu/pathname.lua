@@ -73,6 +73,7 @@ end
 function Pathname.plus(path1, path2)
 	local prefix2 = path2
 	local last_prefix2
+	local base2
 	local index_list2 = {}
 	local basename_list2 = {}
 	prefix2, base2 = Pathname.chop_basename(prefix2)
