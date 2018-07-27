@@ -1,0 +1,10 @@
+.svn/
+.git/
+*~
+*.bak
+.*.swp
+.DS_Store
+Thumbs.db
+thumbs.db
+Desktop.ini
+tags
