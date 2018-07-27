@@ -13,6 +13,9 @@ end
 function Pathname:to_s()
 	return self:__tostring()
 end
+function Pathname:to_path()
+	return self:__tostring()
+end
 function Pathname:basename(extension)
 	local base
 	if self.pathname then
@@ -58,17 +61,6 @@ function Pathname.chop_basename(path)
 		prefix = path:sub(1, index - 1)
 	end
 	return prefix, base
-end
-function Pathname.split_names(path)
-	local names = {}
-	local prefix
-	local base
-	prefix, base = Pathname.chop_basename(path)
-	while prefix do
-		table.insert(names, base)
-		prefix, base = Pathname.chop_basename(prefix)
-	end
-	return names;
 end
 function Pathname.plus(path1, path2)
 	local prefix2 = path2
@@ -146,4 +138,150 @@ function Pathname:__div(other)
 end
 function Pathname:parent()
 	return self:__add('..')
+end
+function Pathname:is_relative()
+	local path = self.pathname
+	local _
+	local result
+	path, _ = self.chop_basename(path)
+	while path do
+		result = path
+		path, _ = self.chop_basename(path)
+	end
+	return result == ''
+end
+function Pathname:is_absolute()
+	return not self:is_relative()
+end
+function Pathname:each_filename(callback)
+	local path = self.pathname
+	local factory = function()
+		local base
+		path, base = Pathname.chop_basename(path)
+		if not path then
+			return nil
+		end
+		return base
+	end
+	if not callback then
+		return factory
+	end
+	for name in factory do
+		callback(name)
+	end
+end
+function Pathname.split_names(path)
+	local names = {}
+	local prefix
+	local base
+	prefix, base = Pathname.chop_basename(path)
+	while prefix do
+		table.insert(names, base)
+		prefix, base = Pathname.chop_basename(prefix)
+	end
+	return names;
+end
+function Pathname:ascend(callback)
+	local path = self.pathname
+	local _
+	local result = {}
+	local factory = function()
+		if not path or path == '' then
+			return nil
+		end
+		local new_path = self:new(self.del_trailing_separator(path))
+		path, _ = self.chop_basename(path)
+		return new_path
+	end
+	if not callback then
+		return factory
+	end
+	for path in factory do
+		callback(path)
+	end
+end
+function Pathname:descend(callback)
+	local tbl = {}
+	self:ascend(function(path)
+		table.insert(tbl, 1, path)
+	end)
+	local i = 0
+	local factory = function()
+		i = i + 1
+		if i > #tbl then
+			return nil
+		end
+		return tbl[i]
+	end
+	if not callback then
+		return factory;
+	end
+	for path in factory do
+		callback(path)
+	end
+end
+function Pathname.del_trailing_separator(path)
+	local prefix
+	local base
+	prefix, base = Pathname.chop_basename(path)
+	if prefix then
+		return prefix .. base
+	end
+	if path:match('/$') then
+		return Pathname.dirname(path)
+	end
+	return path
+end
+function Pathname:is_root()
+	if not Pathname.chop_basename(self.pathname) and self.pathname == '/' then
+		return true
+	end
+	return false
+end
+function Pathname:gsub(pattern, replace, number)
+	return Pathname:new(self.pathname:gsub(pattern, replace, number))
+end
+function Pathname:truncate(length)
+	return Pathname:new(self.pathname:sub(1, length))
+end
+function Pathname:extname()
+	local extname = self.pathname:match('(%.[^%.]+)%.*$')
+	return extname or ''
+end
+function Pathname:cleanpath()
+	return Pathname:new(Pathname.cleanpath_aggressive(self.pathname))
+end
+function Pathname.cleanpath_aggressive(path)
+	local names = {}
+	local prefix
+	local base
+	local pre = path
+	prefix, base = Pathname.chop_basename(pre)
+	while prefix do
+		pre = prefix
+		if base == '.' or base == '..' then
+			table.insert(names, 1, base)
+		else
+			if names[1] == '..' then
+				table.remove(names, 1)
+			else
+				table.insert(names, 1, base)
+			end
+		end
+		prefix, base = Pathname.chop_basename(prefix)
+	end
+	if Pathname.basename(pre) == '/' then
+		while names[1] == '..' do
+			table.remove(names, 1)
+		end
+	end
+	-- join
+	local cleanpath = pre
+	if #names > 0 then
+		cleanpath = cleanpath .. names[1]
+	end
+	for i = 2, #names do
+		cleanpath = cleanpath .. '/' .. names[i]
+	end
+	return cleanpath
 end
