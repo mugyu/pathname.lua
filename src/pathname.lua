@@ -259,9 +259,9 @@ function Pathname.cleanpath_aggressive(path)
 	prefix, base = Pathname.chop_basename(pre)
 	while prefix do
 		pre = prefix
-		if base == '.' or base == '..' then
+		if base == '..' then
 			table.insert(names, 1, base)
-		else
+		elseif base ~= '.' then
 			if names[1] == '..' then
 				table.remove(names, 1)
 			else
